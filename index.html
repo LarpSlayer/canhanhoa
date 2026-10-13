@@ -56,11 +56,11 @@
     </div>
 
     <!-- Ô tìm kiếm -->
-    <input id="s" class="box" placeholder="🔍 Tìm kiếm trong Album..." oninput="search()">
+    <input id="s" class="box" placeholder="🔍 Tìm kiếm..." oninput="search()">
 
     <!-- Form nhập Note -->
-    <input id="t" class="box" placeholder="Tiêu đề (VD: Script Blox Fruits, Link Video FB...)">
-    <select id="aSelect" class="box"></select>
+    <input id="t" class="box" placeholder="Tiêu đề">
+    <select id="aSelect" class="box" style="display:none;"></select>
     <textarea id="c" class="box" placeholder="Nội dung code / Văn bản / Link ảnh video..."></textarea>
     <button class="btn" onclick="add()">+ LƯU TẬP TỆP</button>
 
@@ -68,7 +68,7 @@
     <div id="list"></div>
 
     <script>
-        let defaultAlbums = ["Tất cả", "Roblox Script", "Web Code", "Ảnh & Video", "Khác"];
+        let defaultAlbums = ["Tất cả"];
         let albums = JSON.parse(localStorage.getItem("my_albums") || JSON.stringify(defaultAlbums));
         let notes = JSON.parse(localStorage.getItem("my_notes") || "[]");
         let currentAlbum = "Tất cả";
@@ -91,11 +91,19 @@
             });
             document.getElementById("albumChips").innerHTML = chipsHTML;
 
-            let selectHTML = "";
-            albums.filter(a => a !== "Tất cả").forEach(a => {
-                selectHTML += `<option value="${escapeHtml(a)}">📁 Album: ${escapeHtml(a)}</option>`;
-            });
-            document.getElementById("aSelect").innerHTML = selectHTML;
+            let customAlbums = albums.filter(a => a !== "Tất cả");
+            let selectEl = document.getElementById("aSelect");
+            
+            if (customAlbums.length > 0) {
+                let selectHTML = "";
+                customAlbums.forEach(a => {
+                    selectHTML += `<option value="${escapeHtml(a)}">📁 Album: ${escapeHtml(a)}</option>`;
+                });
+                selectEl.innerHTML = selectHTML;
+                selectEl.style.display = "block";
+            } else {
+                selectEl.style.display = "none";
+            }
         }
 
         function selectAlbum(name) {
@@ -123,7 +131,7 @@
             data.forEach(n => {
                 let isCode = n.content.includes("function") || n.content.includes("local ") || n.content.includes("<html") || n.content.length > 80;
                 let mediaHTML = getMediaEmbed(n.content);
-                let albumTag = n.album ? `<span class="album-tag">📁 ${escapeHtml(n.album)}</span>` : '';
+                let albumTag = (n.album && n.album !== "Tất cả") ? `<span class="album-tag">📁 ${escapeHtml(n.album)}</span>` : '';
 
                 h += `<div class="card">
                     <button class="del" onclick="del(${n.id})">Xóa</button>
@@ -156,10 +164,12 @@
         function add() {
             let t = document.getElementById("t").value.trim();
             let c = document.getElementById("c").value.trim();
-            let a = document.getElementById("aSelect").value;
+            let selectEl = document.getElementById("aSelect");
+            let a = (selectEl.style.display !== "none") ? selectEl.value : "";
+            
             if (!t && !c) return alert("Nhập nội dung vào!");
             
-            notes.unshift({ id: Date.now(), title: t || "Ghi chú", content: c, album: a || "Khác" });
+            notes.unshift({ id: Date.now(), title: t || "Ghi chú", content: c, album: a });
             saveData();
             search();
             document.getElementById("t").value = "";
