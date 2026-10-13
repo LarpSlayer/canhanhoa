@@ -8,7 +8,7 @@
     <style>
         body { 
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; 
-            background: linear-gradient(135deg, #1e1e2f, #111119) no-repeat center center fixed; 
+            background: url('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAABAAAAAMACAYAAACN/0RDAAAgAElEQVR4nOy9aZMkR5Ym...') no-repeat center center fixed; 
             background-size: cover; 
             color: #fff; 
             padding: 15px; 
@@ -30,9 +30,9 @@
         textarea.box { height: 100px; resize: vertical; font-family: monospace; }
         .btn { background: #00a2ff; color: #fff; border: none; padding: 12px; width: 100%; border-radius: 8px; font-weight: bold; font-size: 16px; margin-bottom: 15px; cursor: pointer; box-shadow: 0 4px 10px rgba(0,162,255,0.3); }
         
-        /* Backup & BG Bar */
-        .backup-bar { display: flex; gap: 8px; margin-bottom: 15px; flex-wrap: wrap; }
-        .btn-sub { background: rgba(34, 34, 34, 0.85); backdrop-filter: blur(5px); color: #00a2ff; border: 1px solid #00a2ff; padding: 8px; border-radius: 6px; font-size: 13px; font-weight: bold; flex: 1; min-width: 120px; cursor: pointer; text-align: center; }
+        /* Backup Bar */
+        .backup-bar { display: flex; gap: 10px; margin-bottom: 15px; }
+        .btn-sub { background: rgba(34, 34, 34, 0.85); backdrop-filter: blur(5px); color: #00a2ff; border: 1px solid #00a2ff; padding: 8px; border-radius: 6px; font-size: 13px; font-weight: bold; flex: 1; cursor: pointer; text-align: center; }
 
         /* Album Bar Styles */
         .album-section { margin-bottom: 15px; }
@@ -62,15 +62,11 @@
 <body>
     <h2>🧠 KHO CODE & ALBUM</h2>
     
-    <!-- Thanh Backup / Restore / Hình nền -->
+    <!-- Thanh Backup / Restore -->
     <div class="backup-bar">
-        <button class="btn-sub" onclick="exportData()">📥 Tải Backup</button>
-        <button class="btn-sub" onclick="document.getElementById('importFile').click()">📤 Phục Hồi</button>
+        <button class="btn-sub" onclick="exportData()">📥 Tải File Sao Lưu</button>
+        <button class="btn-sub" onclick="document.getElementById('importFile').click()">📤 Khôi Phục File</button>
         <input type="file" id="importFile" accept=".json" style="display:none" onchange="importData(event)">
-        
-        <button class="btn-sub" onclick="document.getElementById('bgInput').click()">🖼️ Đổi Hình Nền</button>
-        <input type="file" id="bgInput" accept="image/*" style="display:none" onchange="changeBg(event)">
-        <button class="btn-sub" onclick="resetBg()" style="max-width: 50px;" title="Reset nền">↺</button>
     </div>
 
     <!-- Thanh chọn & Quản lý Album -->
@@ -100,36 +96,6 @@
         let notes = JSON.parse(localStorage.getItem("my_notes") || "[]");
         let currentAlbum = "Tất cả";
         let fuse;
-
-        // Quản lý hình nền
-        function loadSavedBg() {
-            let savedBg = localStorage.getItem("custom_bg");
-            if (savedBg) {
-                document.body.style.backgroundImage = `url('${savedBg}')`;
-            }
-        }
-
-        function changeBg(e) {
-            let file = e.target.files[0];
-            if (file) {
-                let reader = new FileReader();
-                reader.onload = function(evt) {
-                    let bgData = evt.target.result;
-                    document.body.style.backgroundImage = `url('${bgData}')`;
-                    try {
-                        localStorage.setItem("custom_bg", bgData);
-                    } catch (err) {
-                        alert("Ảnh quá lớn để lưu tự động, nhưng vẫn sẽ hiển thị trong phiên làm việc này!");
-                    }
-                };
-                reader.readAsDataURL(file);
-            }
-        }
-
-        function resetBg() {
-            localStorage.removeItem("custom_bg");
-            document.body.style.backgroundImage = "linear-gradient(135deg, #1e1e2f, #111119)";
-        }
 
         function initFuse(data) {
             fuse = new Fuse(data, { threshold: 0.4, keys: ["title", "content", "album"] });
@@ -188,4 +154,140 @@
         }
 
         function deleteAlbum(event, name) {
+            event.stopPropagation();
+            if (confirm(`Bạn có chắc muốn xóa Album "${name}"? Các ghi chú thuộc album này vẫn sẽ giữ nguyên.`)) {
+                albums = albums.filter(a => a !== name);
+                notes.forEach(n => {
+                    if (n.album === name) n.album = "";
+                });
+                if (currentAlbum === name) currentAlbum = "Tất cả";
+                saveData();
+                renderAlbums();
+                search();
+            }
+        }
+
+        function toggleCard(id) {
+            let body = document.getElementById(`body-${id}`);
+            let icon = document.getElementById(`icon-${id}`);
+            if (body) {
+                if (body.classList.contains("open")) {
+                    body.classList.remove("open");
+                    if (icon) icon.innerText = "▼";
+                } else {
+                    body.classList.add("open");
+                    if (icon) icon.innerText = "▲";
+                }
+            }
+        }
+
+        function renderNotes(data) {
+            let h = "";
+            data.forEach(n => {
+                let isCode = n.content.includes("function") || n.content.includes("local ") || n.content.includes("<html") || n.content.length > 80;
+                let mediaHTML = getMediaEmbed(n.content);
+                let albumTag = (n.album && n.album !== "Tất cả") ? `<span class="album-tag">📁 ${escapeHtml(n.album)}</span>` : '';
+
+                h += `<div class="card">
+                    <button class="del" onclick="del(${n.id})">Xóa</button>
+                    <div class="card-header" onclick="toggleCard(${n.id})">
+                        <b>${escapeHtml(n.title)}</b> <span class="toggle-icon" id="icon-${n.id}">▼</span>
+                        <div>${albumTag}</div>
+                    </div>
+                    <div class="card-body" id="body-${n.id}">
+                        ${isCode ? `<button class="copy-btn" onclick="copyText(${n.id})">📋 Copy Code</button>` : ''}
+                        <pre id="code-${n.id}">${escapeHtml(n.content)}</pre>
+                        ${mediaHTML}
+                    </div>
+                </div>`;
+            });
+            document.getElementById("list").innerHTML = h || "<p style='text-align:center;color:#666'>Chưa có ghi chú nào</p>";
+        }
+
+        function getMediaEmbed(text) {
+            let imgMatch = text.match(/(https?:\/\/.*\.(?:png|jpg|jpeg|gif|webp))/i);
+            if (imgMatch) return `<div class="media-preview"><img src="${imgMatch[0]}" /></div>`;
+            return '';
+        }
+
+        function copyText(id) {
+            let note = notes.find(n => n.id === id);
+            if (note) {
+                navigator.clipboard.writeText(note.content);
+                alert("Đã copy code vào bộ nhớ tạm!");
+            }
+        }
+
+        function add() {
+            let t = document.getElementById("t").value.trim();
+            let c = document.getElementById("c").value.trim();
+            let selectEl = document.getElementById("aSelect");
+            let a = (selectEl.style.display !== "none") ? selectEl.value : "";
             
+            if (!t && !c) return alert("Nhập nội dung vào!");
+            
+            notes.unshift({ id: Date.now(), title: t || "Ghi chú", content: c, album: a });
+            saveData();
+            search();
+            document.getElementById("t").value = "";
+            document.getElementById("c").value = "";
+        }
+
+        function del(id) {
+            if (confirm("Xóa note này?")) {
+                notes = notes.filter(n => n.id !== id);
+                saveData();
+                search();
+            }
+        }
+
+        function search() {
+            let q = document.getElementById("s").value.trim();
+            let filtered = (currentAlbum === "Tất cả") ? notes : notes.filter(n => n.album === currentAlbum);
+            if (q) {
+                initFuse(filtered);
+                renderNotes(fuse.search(q).map(r => r.item));
+            } else {
+                renderNotes(filtered);
+            }
+        }
+
+        function exportData() {
+            let dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify({ notes, albums }));
+            let downloadAnchor = document.createElement('a');
+            downloadAnchor.setAttribute("href", dataStr);
+            downloadAnchor.setAttribute("download", `backup_notes_${Date.now()}.json`);
+            document.body.appendChild(downloadAnchor);
+            downloadAnchor.click();
+            downloadAnchor.remove();
+        }
+
+        function importData(event) {
+            let file = event.target.files[0];
+            if (!file) return;
+            let reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    let imported = JSON.parse(e.target.result);
+                    if (imported.notes && imported.albums) {
+                        notes = imported.notes;
+                        albums = imported.albums;
+                        saveData();
+                        renderAlbums();
+                        search();
+                        alert("Khôi phục dữ liệu thành công!");
+                    }
+                } catch (err) {
+                    alert("File không hợp lệ!");
+                }
+            };
+            reader.readAsText(file);
+        }
+
+        function escapeHtml(t) { return (t || '').replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;"); }
+
+        renderAlbums();
+        search();
+    </script>
+</body>
+</html>
