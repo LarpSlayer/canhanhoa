@@ -3,39 +3,67 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Ghi Chú Cá Nhân</title>
+    <title>Ghi Chú & Code Snippets</title>
     <script src="https://cdn.jsdelivr.net/npm/fuse.js@6.6.2"></script>
     <style>
-        body { font-family: -apple-system, sans-serif; background: #121212; color: #fff; padding: 15px; max-width: 500px; margin: 0 auto; }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #121212; color: #fff; padding: 15px; max-width: 600px; margin: 0 auto; }
         h2 { text-align: center; color: #00a2ff; margin-bottom: 15px; }
+        .banner { width: 100%; border-radius: 10px; margin-bottom: 15px; border: 1px solid #00a2ff; object-fit: cover; max-height: 200px; }
         .box { width: 100%; padding: 12px; margin-bottom: 10px; border-radius: 8px; border: 1px solid #00a2ff; background: #1e1e1e; color: #fff; box-sizing: border-box; font-size: 15px; }
-        textarea.box { height: 80px; resize: none; }
+        textarea.box { height: 100px; resize: vertical; font-family: monospace; }
         .btn { background: #00a2ff; color: #fff; border: none; padding: 12px; width: 100%; border-radius: 8px; font-weight: bold; font-size: 16px; margin-bottom: 20px; cursor: pointer; }
-        .card { background: #1e1e1e; padding: 12px; border-radius: 8px; margin-bottom: 10px; border-left: 4px solid #00a2ff; position: relative; }
-        .card b { display: block; font-size: 16px; color: #fff; margin-bottom: 5px; }
-        .card p { color: #ccc; margin: 0; font-size: 14px; white-space: pre-wrap; }
-        .del { position: absolute; right: 10px; top: 10px; background: #ff4d4d; color: #fff; border: none; padding: 4px 8px; border-radius: 4px; font-size: 12px; }
+        .card { background: #1e1e1e; padding: 12px; border-radius: 8px; margin-bottom: 12px; border-left: 4px solid #00a2ff; position: relative; word-break: break-word; }
+        .card b { display: block; font-size: 16px; color: #fff; margin-bottom: 6px; padding-right: 50px; }
+        .card pre { background: #0d0d0d; padding: 10px; border-radius: 6px; overflow-x: auto; font-family: monospace; font-size: 13px; color: #00ff66; white-space: pre-wrap; margin: 8px 0; }
+        .media-preview img, .media-preview video { max-width: 100%; border-radius: 6px; margin-top: 8px; }
+        .del { position: absolute; right: 10px; top: 10px; background: #ff4d4d; color: #fff; border: none; padding: 4px 8px; border-radius: 4px; font-size: 12px; cursor: pointer; }
+        .copy-btn { background: #333; color: #00a2ff; border: 1px solid #00a2ff; padding: 4px 8px; border-radius: 4px; font-size: 12px; cursor: pointer; float: right; margin-bottom: 5px; }
     </style>
 </head>
 <body>
-    <h2>🧠 GHI CHÚ CÁ NHÂN</h2>
-    <input id="s" class="box" placeholder="🔍 Tìm kiếm (gõ gần đúng vẫn ra)..." oninput="search()">
-    <input id="t" class="box" placeholder="Tiêu đề ghi chú...">
-    <textarea id="c" class="box" placeholder="Nội dung lưu trữ..."></textarea>
-    <button class="btn" onclick="add()">+ LƯU GHI CHÚ</button>
+    <h2>🧠 KHO CODE & GHI CHÚ</h2>
+    <input id="s" class="box" placeholder="🔍 Tìm kiếm code, ghi chú..." oninput="search()">
+    <input id="t" class="box" placeholder="Tiêu đề (VD: Script Roblox Farm, Link Video FB...)">
+    <textarea id="c" class="box" placeholder="Nội dung code / Văn bản / Link ảnh video..."></textarea>
+    <button class="btn" onclick="add()">+ LƯU TẬP TỆP</button>
     <div id="list"></div>
 
     <script>
         let notes = JSON.parse(localStorage.getItem("my_notes") || "[]"), fuse;
         function init() { fuse = new Fuse(notes, { threshold: 0.4, keys: ["title", "content"] }); }
         function save() { localStorage.setItem("my_notes", JSON.stringify(notes)); init(); }
+        
         function render(d) {
             let h = "";
             d.forEach(n => {
-                h += `<div class="card"><b>${escapeHtml(n.title)}</b><p>${escapeHtml(n.content)}</p><button class="del" onclick="del(${n.id})">Xóa</button></div>`;
+                let isCode = n.content.includes("function") || n.content.includes("local ") || n.content.includes("<html") || n.content.length > 80;
+                let mediaHTML = getMediaEmbed(n.content);
+                
+                h += `<div class="card">
+                    <b>${escapeHtml(n.title)}</b>
+                    <button class="del" onclick="del(${n.id})">Xóa</button>
+                    ${isCode ? `<button class="copy-btn" onclick="copyText(${n.id})">📋 Copy Code</button>` : ''}
+                    <pre id="code-${n.id}">${escapeHtml(n.content)}</pre>
+                    ${mediaHTML}
+                </div>`;
             });
             document.getElementById("list").innerHTML = h || "<p style='text-align:center;color:#666'>Chưa có ghi chú nào</p>";
         }
+
+        function getMediaEmbed(text) {
+            let imgMatch = text.match(/(https?:\/\/.*\.(?:png|jpg|jpeg|gif|webp))/i);
+            if (imgMatch) return `<div class="media-preview"><img src="${imgMatch[0]}" /></div>`;
+            return '';
+        }
+
+        function copyText(id) {
+            let note = notes.find(n => n.id === id);
+            if (note) {
+                navigator.clipboard.writeText(note.content);
+                alert("Đã copy code vào bộ nhớ tạm!");
+            }
+        }
+
         function add() {
             let t = document.getElementById("t").value.trim(), c = document.getElementById("c").value.trim();
             if (!t && !c) return alert("Nhập nội dung đã niga!");
@@ -43,17 +71,20 @@
             save(); render(notes);
             document.getElementById("t").value = ""; document.getElementById("c").value = "";
         }
+
         function del(id) {
             if (confirm("Xóa note này?")) {
                 notes = notes.filter(n => n.id !== id);
                 save(); search();
             }
         }
+
         function search() {
             let q = document.getElementById("s").value.trim();
             if (!q) return render(notes);
             render(fuse.search(q).map(r => r.item));
         }
+
         function escapeHtml(t) { return t.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;"); }
         init(); render(notes);
     </script>
