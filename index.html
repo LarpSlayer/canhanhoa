@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ghi Chú Cá Nhân</title>
+    <script src="https://cdn.jsdelivr.net/npm/fuse.js@6.6.2"></script>
+    <style>
+        body { font-family: -apple-system, sans-serif; background: #121212; color: #fff; padding: 15px; max-width: 500px; margin: 0 auto; }
+        h2 { text-align: center; color: #00a2ff; margin-bottom: 15px; }
+        .box { width: 100%; padding: 12px; margin-bottom: 10px; border-radius: 8px; border: 1px solid #00a2ff; background: #1e1e1e; color: #fff; box-sizing: border-box; font-size: 15px; }
+        textarea.box { height: 80px; resize: none; }
+        .btn { background: #00a2ff; color: #fff; border: none; padding: 12px; width: 100%; border-radius: 8px; font-weight: bold; font-size: 16px; margin-bottom: 20px; cursor: pointer; }
+        .card { background: #1e1e1e; padding: 12px; border-radius: 8px; margin-bottom: 10px; border-left: 4px solid #00a2ff; position: relative; }
+        .card b { display: block; font-size: 16px; color: #fff; margin-bottom: 5px; }
+        .card p { color: #ccc; margin: 0; font-size: 14px; white-space: pre-wrap; }
+        .del { position: absolute; right: 10px; top: 10px; background: #ff4d4d; color: #fff; border: none; padding: 4px 8px; border-radius: 4px; font-size: 12px; }
+    </style>
+</head>
+<body>
+    <h2>🧠 GHI CHÚ CÁ NHÂN</h2>
+    <input id="s" class="box" placeholder="🔍 Tìm kiếm (gõ gần đúng vẫn ra)..." oninput="search()">
+    <input id="t" class="box" placeholder="Tiêu đề ghi chú...">
+    <textarea id="c" class="box" placeholder="Nội dung lưu trữ..."></textarea>
+    <button class="btn" onclick="add()">+ LƯU GHI CHÚ</button>
+    <div id="list"></div>
+
+    <script>
+        let notes = JSON.parse(localStorage.getItem("my_notes") || "[]"), fuse;
+        function init() { fuse = new Fuse(notes, { threshold: 0.4, keys: ["title", "content"] }); }
+        function save() { localStorage.setItem("my_notes", JSON.stringify(notes)); init(); }
+        function render(d) {
+            let h = "";
+            d.forEach(n => {
+                h += `<div class="card"><b>${escapeHtml(n.title)}</b><p>${escapeHtml(n.content)}</p><button class="del" onclick="del(${n.id})">Xóa</button></div>`;
+            });
+            document.getElementById("list").innerHTML = h || "<p style='text-align:center;color:#666'>Chưa có ghi chú nào</p>";
+        }
+        function add() {
+            let t = document.getElementById("t").value.trim(), c = document.getElementById("c").value.trim();
+            if (!t && !c) return alert("Nhập nội dung đã niga!");
+            notes.unshift({ id: Date.now(), title: t || "Ghi chú", content: c });
+            save(); render(notes);
+            document.getElementById("t").value = ""; document.getElementById("c").value = "";
+        }
+        function del(id) {
+            if (confirm("Xóa note này?")) {
+                notes = notes.filter(n => n.id !== id);
+                save(); search();
+            }
+        }
+        function search() {
+            let q = document.getElementById("s").value.trim();
+            if (!q) return render(notes);
+            render(fuse.search(q).map(r => r.item));
+        }
+        function escapeHtml(t) { return t.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;"); }
+        init(); render(notes);
+    </script>
+</body>
+</html>
